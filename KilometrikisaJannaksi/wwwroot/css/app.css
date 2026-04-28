@@ -114,10 +114,27 @@ code {
     text-align: start;
 }
 /* ===== Kilometrikisa styles ===== */
+
+/* --- Värimuuttujat --- */
+:root {
+    --kk-green:       #1a7c3e;
+    --kk-green-light: #34c76a;
+    --kk-green-bg:    #e8f5ec;
+    --kk-orange:      #e07b00;
+    --kk-orange-bg:   #fff8ee;
+    --kk-page-bg:     #f0f4f1;
+    --kk-card-bg:     #ffffff;
+    --kk-border:      #d0e8da;
+    --kk-text:        #1a2e22;
+    --kk-muted:       #6a7f71;
+}
+
 html, body, #app {
     height: 100%;
     margin: 0;
-    background: #f0f4f2;
+    background: var(--kk-page-bg);
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: var(--kk-text);
 }
 
 main {
@@ -127,7 +144,7 @@ main {
 .kk-page {
     max-width: 860px;
     margin: 0 auto;
-    padding: 1.5rem 1rem 2rem;
+    padding: 0 0 2rem;
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -135,17 +152,23 @@ main {
 
 .kk-header {
     text-align: center;
+    background: linear-gradient(135deg, var(--kk-green) 0%, #0f5a2c 100%);
+    color: white;
+    padding: 1.5rem 1rem 1.2rem;
+    border-radius: 0 0 20px 20px;
+    box-shadow: 0 4px 16px rgba(26,124,62,0.25);
 }
 
 .kk-title {
     font-size: 1.8rem;
     font-weight: 800;
-    color: #1a7c3e;
+    color: white;
     margin-bottom: 0.1rem;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
 .kk-subtitle {
-    color: #666;
+    color: rgba(255,255,255,0.82);
     font-size: 1rem;
     margin: 0;
 }
@@ -153,10 +176,11 @@ main {
 #kk-map {
     width: 100%;
     height: 420px;
-    border-radius: 14px;
+    border-radius: 0;
     overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.13);
-    border: 2px solid #d0e8da;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+    border-top: 2px solid var(--kk-border);
+    border-bottom: 2px solid var(--kk-border);
 }
 
 .kk-legend {
@@ -165,7 +189,8 @@ main {
     justify-content: center;
     flex-wrap: wrap;
     font-size: 0.85rem;
-    color: #555;
+    color: var(--kk-muted);
+    padding: 0 1rem;
 }
 
 .kk-legend-item {
@@ -180,8 +205,8 @@ main {
     height: 4px;
     border-radius: 2px;
 }
-.kk-leg-line.green  { background: #1a7c3e; }
-.kk-leg-line.orange { background: #e07b00; }
+.kk-leg-line.green  { background: var(--kk-green); }
+.kk-leg-line.orange { background: var(--kk-orange); }
 .kk-leg-line.grey   { background: #bbb; border-top: 3px dashed #bbb; height: 0; }
 
 .kk-stat-row {
@@ -189,43 +214,47 @@ main {
     gap: 1rem;
     flex-wrap: wrap;
     justify-content: center;
+    padding: 0 1rem;
 }
 
 .kk-stat {
     display: flex;
     flex-direction: column;
-    background: #fff;
+    background: var(--kk-card-bg);
     border-radius: 12px;
     padding: 0.7rem 1.2rem;
     min-width: 130px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    border-left: 4px solid var(--kk-green-bg);
 }
 
 .kk-stat-label {
-    font-size: 0.75rem;
-    color: #888;
+    font-size: 0.72rem;
+    color: var(--kk-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
+    font-weight: 600;
 }
 
 .kk-stat-value {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #222;
+    color: var(--kk-text);
 }
 
-.kk-green { color: #1a7c3e; }
-.kk-orange { color: #e07b00; }
+.kk-green { color: var(--kk-green); }
+.kk-orange { color: var(--kk-orange); }
 
 .kk-progress-wrap {
-    background: #d8eede;
+    background: var(--kk-green-bg);
     border-radius: 50px;
     height: 34px;
     overflow: hidden;
+    margin: 0 1rem;
 }
 
 .kk-progress-bar {
-    background: linear-gradient(90deg, #1a7c3e 0%, #34c76a 100%);
+    background: linear-gradient(90deg, var(--kk-green) 0%, var(--kk-green-light) 100%);
     height: 100%;
     border-radius: 50px;
     display: flex;
@@ -245,19 +274,20 @@ main {
 
 .kk-next {
     text-align: center;
-    background: #fffbe6;
-    border: 1px solid #ffe082;
+    background: var(--kk-orange-bg);
+    border: 1px solid #ffd580;
     border-radius: 10px;
     padding: 0.65rem 1rem;
-    color: #7a5800;
+    color: #7a4400;
     font-size: 0.95rem;
-    margin: 0;
+    margin: 0 1rem;
 }
 
 .kk-stops {
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
+    padding: 0 1rem;
 }
 
 .kk-stop {
@@ -266,19 +296,19 @@ main {
     gap: 0.75rem;
     padding: 0.55rem 1rem;
     border-radius: 10px;
-    background: #fff;
+    background: var(--kk-card-bg);
     border: 2px solid transparent;
     box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 
 .kk-stop.done {
-    background: #e8f5ec;
+    background: var(--kk-green-bg);
     border-color: #a5d6b0;
 }
 
 .kk-stop.next {
-    background: #fffde7;
-    border-color: #ffe082;
+    background: var(--kk-orange-bg);
+    border-color: #ffd580;
     font-weight: 700;
 }
 
@@ -291,19 +321,19 @@ main {
 .kk-stop-name {
     flex: 1;
     font-size: 0.95rem;
-    color: #222;
+    color: var(--kk-text);
 }
 
 .kk-stop-km {
     font-size: 0.9rem;
-    color: #555;
+    color: var(--kk-muted);
     min-width: 65px;
     text-align: right;
 }
 
 .kk-stop-badge {
     font-size: 0.72rem;
-    background: #1a7c3e;
+    background: var(--kk-green);
     color: #fff;
     border-radius: 20px;
     padding: 2px 9px;
@@ -318,23 +348,24 @@ main {
 .kk-loading, .kk-error {
     text-align: center;
     padding: 2rem;
-    color: #888;
+    color: var(--kk-muted);
     font-size: 1.1rem;
 }
 
 .kk-error { color: #c0392b; }
 
 .kk-win {
-    background: #e8f5ec !important;
+    background: var(--kk-green-bg) !important;
     border-color: #a5d6b0 !important;
-    color: #1a7c3e !important;
+    color: var(--kk-green) !important;
     font-size: 1.2rem !important;
     font-weight: 700;
 }
 
 .kk-updated {
     text-align: center;
-    color: #aaa;
+    color: var(--kk-muted);
     font-size: 0.78rem;
     margin: 0;
+    padding: 0 1rem;
 }
