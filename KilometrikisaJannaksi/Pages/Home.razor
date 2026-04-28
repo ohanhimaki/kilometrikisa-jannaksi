@@ -31,6 +31,7 @@
             if (data != null)
             {
                 ajettu = data.KilometritYhteensa;
+                edellinenKm = data.EdellinenKm;
                 paivitetty = data.Paivitetty ?? "";
             }
         }
@@ -45,40 +46,39 @@
     {
         if (!ladattu || mapInitialized) return;
         mapInitialized = true;
-
-        var prev = await JS.InvokeAsync<string?>("localStorage.getItem", "kk_last_seen_km");
-        if (prev != null && double.TryParse(prev, System.Globalization.NumberStyles.Any,
-                System.Globalization.CultureInfo.InvariantCulture, out var prevKm)
-            && prevKm < ajettu)
-        {
-            edellinenKm = prevKm;
-        }
-        await JS.InvokeVoidAsync("localStorage.setItem", "kk_last_seen_km",
-            ajettu.ToString(System.Globalization.CultureInfo.InvariantCulture));
-
         await InitMap();
         StateHasChanged();
     }
 
     async Task InitMap()
     {
-        var seuraava = stops.FirstOrDefault(x => x.Km > ajettu);
+        double loopLength = stops.Length > 0 ? stops[stops.Length - 1].Km : 1;
+        double lapKm = ajettu % loopLength;
+        double? prevLapKm = edellinenKm.HasValue && edellinenKm.Value < ajettu
+            ? edellinenKm.Value % loopLength
+            : null;
+        // Jos edellinenKm oli eri kierroksella kuin nyt, oranssi alkaa kierroksen alusta
+        bool crossedLap = edellinenKm.HasValue &&
+            Math.Floor(edellinenKm.Value / loopLength) < Math.Floor(ajettu / loopLength);
+        if (crossedLap) prevLapKm = 0;
+
         var stopsJs = stops.Select(s => new
         {
             name = s.Name,
             km = s.Km,
             lat = s.Lat,
             lng = s.Lng,
-            done = ajettu > s.Km,
-            next = seuraava?.Name == s.Name,
+            done = lapKm > s.Km,
+            next = stops.SkipLast(1).FirstOrDefault(x => x.Km > lapKm)?.Name == s.Name,
         }).ToArray();
 
-        await JS.InvokeVoidAsync("kkMap.init", stopsJs, ajettu,
-            edellinenKm.HasValue ? (object)edellinenKm.Value : null);
+        await JS.InvokeVoidAsync("kkMap.init", stopsJs, lapKm,
+            prevLapKm.HasValue ? (object)prevLapKm.Value : null);
     }
 
     record KilometriData(
         double KilometritYhteensa,
+        double? EdellinenKm,
         string? Paivitetty,
         string? Haettu,
         string? Lahde);
@@ -87,17 +87,29 @@
 @{
     var fi = new System.Globalization.CultureInfo("fi-FI");
     var inv = System.Globalization.CultureInfo.InvariantCulture;
+
+    // Loop-logiikka
+    double loopLength = stops.Length > 0 ? stops[stops.Length - 1].Km : 1;
+    int kierroksia = loopLength > 0 ? (int)Math.Floor(ajettu / loopLength) : 0;
+    double lapKm = ajettu % loopLength;
+
+    // Tavoite (erillinen kokonaisuus)
     double prosentti = tavoiteKm > 0 ? ajettu / tavoiteKm * 100 : 0;
     double jaljella = tavoiteKm - ajettu;
-    var seuraava = stops.FirstOrDefault(p => p.Km > ajettu);
-    string pct = Math.Min(prosentti, 100).ToString("F1", inv);
     bool yliTavoitteen = ajettu >= tavoiteKm;
+    string pct = Math.Min(prosentti, 100).ToString("F1", inv);
+
+    // Seuraava pysäkki tällä kierroksella (ohita sulkeva pysäkki)
+    var lapStops = stops.SkipLast(1).ToArray();
+    var seuraava = lapStops.FirstOrDefault(p => p.Km > lapKm);
+    double uuttaKm = edellinenKm.HasValue && edellinenKm.Value < ajettu
+        ? ajettu - edellinenKm.Value : 0;
 }
 
 <div class="kk-page">
     <div class="kk-header">
         <h1 class="kk-title">🚴 Kilometrikisa – Firmatavoite</h1>
-        <p class="kk-subtitle">Yhteinen matka Suomen halki! · Oulu → Turku → MAALI</p>
+        <p class="kk-subtitle">Yhteinen rinkilenkki Suomen halki! · Oulu → Kuopio → Helsinki → Turku → Vaasa → Oulu</p>
     </div>
 
     @if (!ladattu)
@@ -113,58 +125,57 @@
         <div id="kk-map"></div>
 
         <div class="kk-legend">
-            <span class="kk-legend-item"><span class="kk-leg-line green"></span> Ajettu reitti</span>
-            @if (edellinenKm.HasValue)
+            <span class="kk-legend-item"><span class="kk-leg-line green"></span> Ajettu (tämä kierros)</span>
+            @if (edellinenKm.HasValue && edellinenKm.Value < ajettu)
             {
-                <span class="kk-legend-item"><span class="kk-leg-line orange"></span> Uutta edellisestä käynnistä</span>
+                <span class="kk-legend-item"><span class="kk-leg-line orange"></span> Uutta edellisestä päivityksestä</span>
             }
             <span class="kk-legend-item"><span class="kk-leg-line grey"></span> Tuleva reitti</span>
         </div>
 
         <div class="kk-stat-row">
             <div class="kk-stat">
+                <span class="kk-stat-label">Kierroksia</span>
+                <span class="kk-stat-value kk-green">@kierroksia 🔄</span>
+            </div>
+            <div class="kk-stat">
+                <span class="kk-stat-label">Tällä kierroksella</span>
+                <span class="kk-stat-value kk-green">@lapKm.ToString("N1", fi) km</span>
+            </div>
+            <div class="kk-stat">
                 <span class="kk-stat-label">Ajettu yhteensä</span>
-                <span class="kk-stat-value kk-green">@ajettu.ToString("N1", fi) km</span>
+                <span class="kk-stat-value">@ajettu.ToString("N1", fi) km</span>
             </div>
-            <div class="kk-stat">
-                <span class="kk-stat-label">Tavoite</span>
-                <span class="kk-stat-value">@tavoiteKm.ToString("N0", fi) km</span>
-            </div>
-            <div class="kk-stat">
-                <span class="kk-stat-label">@(yliTavoitteen ? "Yli tavoitteen" : "Jäljellä")</span>
-                <span class="kk-stat-value @(yliTavoitteen ? "kk-green" : "kk-orange")">
-                    @(yliTavoitteen ? "+" : "")@Math.Abs(jaljella).ToString("N1", fi) km
-                </span>
-            </div>
-            @if (edellinenKm.HasValue)
+            @if (edellinenKm.HasValue && edellinenKm.Value < ajettu)
             {
                 <div class="kk-stat">
-                    <span class="kk-stat-label">Uutta edellisestä käynnistä</span>
-                    <span class="kk-stat-value kk-orange">+@((ajettu - edellinenKm.Value).ToString("N1", fi)) km 🔥</span>
+                    <span class="kk-stat-label">Uutta edellisestä päivityksestä</span>
+                    <span class="kk-stat-value kk-orange">+@uuttaKm.ToString("N1", fi) km 🔥</span>
                 </div>
             }
         </div>
 
-        @if (!yliTavoitteen)
+        @* Kokonaistavoite erillään rinkkireiteistä *@
+        @if (tavoiteKm > 0)
         {
             <div class="kk-progress-wrap">
                 <div class="kk-progress-bar" style="width: @pct%">
-                    <span class="kk-progress-label">@pct%</span>
+                    <span class="kk-progress-label">@pct% tavoitteesta</span>
                 </div>
             </div>
+            @if (yliTavoitteen)
+            {
+                <p class="kk-next kk-win">🏆 Km-tavoite @tavoiteKm.ToString("N0", fi) km saavutettu! Mahtavaa pyöräilyä!</p>
+            }
         }
 
-        @if (seuraava != null && !yliTavoitteen)
+        @if (seuraava != null)
         {
-            double kmSeuraavaan = seuraava.Km - ajettu;
+            double kmSeuraavaan = seuraava.Km - lapKm;
             <p class="kk-next">
-                Seuraava pysäkki: <strong>@seuraava.Name</strong> (@seuraava.Km km) –
+                Seuraava pysäkki: <strong>@seuraava.Name</strong> –
                 enää <strong>@kmSeuraavaan.ToString("N1", fi) km</strong> jäljellä! 💪
             </p>
-        }
-        else if (yliTavoitteen)
-        {
-            <p class="kk-next kk-win">🏆 Tavoite saavutettu! Mahtavaa pyöräilyä!</p>
         }
 
         @if (!string.IsNullOrEmpty(paivitetty))
@@ -173,9 +184,9 @@
         }
 
         <div class="kk-stops">
-            @foreach (var p in stops)
+            @foreach (var p in lapStops)
             {
-                bool ohitettu = ajettu >= p.Km;
+                bool ohitettu = lapKm >= p.Km;
                 bool seuraavaPys = seuraava?.Name == p.Name;
                 <div class="kk-stop @(ohitettu ? "done" : "") @(seuraavaPys ? "next" : "")">
                     <span class="kk-stop-icon">@(ohitettu ? "✅" : seuraavaPys ? "🎯" : "⭕")</span>

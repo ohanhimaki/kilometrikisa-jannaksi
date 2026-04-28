@@ -37,9 +37,20 @@ def parse_updated(html: str) -> str:
     match = re.search(r'Päivitetty:\s*([\d\.]+\s+[\d:]+)', html)
     return match.group(1).strip() if match else ""
 
+def load_previous_km(output_path: str):
+    """Lukee edellisen kilometritYhteensa data.json:sta, tai None jos ei ole."""
+    try:
+        with open(output_path, encoding="utf-8") as f:
+            return json.load(f).get("kilometritYhteensa")
+    except Exception:
+        return None
+
 def main():
     settings = load_settings()
     url = settings["Kilometrikisa"]["ScrapeUrl"]
+    output = os.path.normpath(OUTPUT_PATH)
+
+    prev_km = load_previous_km(output)
 
     print(f"Haetaan: {url}")
     html = fetch_html(url)
@@ -49,6 +60,7 @@ def main():
 
     data = {
         "kilometritYhteensa": km,
+        "edellinenKm": prev_km,
         "paivitetty": updated,
         "haettu": fetched_at,
         "lahde": url,

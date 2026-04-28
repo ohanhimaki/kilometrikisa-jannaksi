@@ -27,7 +27,7 @@ window.kkMap = {
         return coords;
     },
 
-    init: function (stops, totalAjettu, edellinenKm) {
+    init: function (stops, lapKm, edellinenLapKm) {
         if (this._map) {
             this._map.remove();
             this._map = null;
@@ -41,32 +41,33 @@ window.kkMap = {
             maxZoom: 19
         }).addTo(map);
 
-        const allCoords = stops.map(s => [s.lat, s.lng]);
+        // Loop: viimeinen stop on sama paikka kuin ensimmäinen → suljettu rengas
+        const loopCoords = stops.map(s => [s.lat, s.lng]);
 
-        // Harmaa katkoviiva – koko reitti taustalle
-        L.polyline(allCoords, {
+        // Harmaa katkoviiva – koko loop taustalle
+        L.polyline(loopCoords, {
             color: '#ccc',
             weight: 3,
             dashArray: '8 8'
         }).addTo(map);
 
         const maxKm = stops[stops.length - 1].km;
-        const capped = Math.min(totalAjettu, maxKm);
+        const capped = Math.min(lapKm, maxKm);
 
-        // Vihreä – koko ajettu osuus (alku → nykyinen sijainti)
-        const greenEnd = edellinenKm != null ? edellinenKm : capped;
+        // Pinkki – ajettu osuus tällä kierroksella
+        const greenEnd = edellinenLapKm != null ? edellinenLapKm : capped;
         if (greenEnd > 0) {
             const greenCoords = this._routeSegment(stops, 0, Math.min(greenEnd, maxKm));
             L.polyline(greenCoords, {
-                color: '#1a7c3e',
+                color: '#e40e56',
                 weight: 5,
                 lineJoin: 'round'
             }).addTo(map);
         }
 
-        // Oranssi – edistys edellisestä käynnistä
-        if (edellinenKm != null && edellinenKm < capped) {
-            const orangeCoords = this._routeSegment(stops, edellinenKm, capped);
+        // Oranssi – uutta edellisestä scrape-päivityksestä
+        if (edellinenLapKm != null && edellinenLapKm < capped) {
+            const orangeCoords = this._routeSegment(stops, edellinenLapKm, capped);
             L.polyline(orangeCoords, {
                 color: '#e07b00',
                 weight: 6,
@@ -84,12 +85,13 @@ window.kkMap = {
             iconAnchor: [16, 24]
         });
         L.marker(bikePos, { icon: bikeIcon })
-            .bindTooltip(`<b>Olemme tässä!</b><br>${totalAjettu.toLocaleString('fi-FI')} km ajettu`, { direction: 'top' })
+            .bindTooltip(`<b>Olemme tässä!</b><br>${lapKm.toLocaleString('fi-FI')} km tällä kierroksella`, { direction: 'top' })
             .addTo(map);
 
-        // Pysäkkipisteet
-        stops.forEach(stop => {
-            const color = stop.done ? '#1a7c3e' : stop.next ? '#e07b00' : '#aaa';
+        // Pysäkkipisteet (ei suljeva pysäkki eli viimeinen = sama kuin eka)
+        const displayStops = stops.slice(0, stops.length - 1);
+        displayStops.forEach(stop => {
+            const color = stop.done ? '#e40e56' : stop.next ? '#e07b00' : '#aaa';
             const size = stop.next ? 16 : 12;
             const icon = L.divIcon({
                 html: `<div style="background:${color};border:3px solid white;width:${size}px;height:${size}px;border-radius:50%;box-shadow:0 1px 5px rgba(0,0,0,0.35)"></div>`,
@@ -102,6 +104,7 @@ window.kkMap = {
                 .addTo(map);
         });
 
-        map.fitBounds(L.latLngBounds(allCoords), { padding: [40, 40] });
+        // Karttanäkymä koko loopin ympärille (ei suljeva duplikaattipiste)
+        map.fitBounds(L.latLngBounds(displayStops.map(s => [s.lat, s.lng])), { padding: [40, 40] });
     }
 };
