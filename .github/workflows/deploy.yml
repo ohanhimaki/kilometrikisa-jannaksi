@@ -37,6 +37,9 @@ jobs:
       - name: Luo 404.html SPA-reititystä varten
         run: cp release/wwwroot/index.html release/wwwroot/404.html
 
+      - name: Estä Jekyllin _framework-ignorointi
+        run: touch release/wwwroot/.nojekyll
+
       - name: Deploy GitHub Pages -haaraan
         uses: JamesIves/github-pages-deploy-action@v4
         with:
