@@ -14,6 +14,7 @@
     double ajettu = 0;
     string paivitetty = "";
     bool ladattu = false;
+    bool mapInitialized = false;
     bool virhe = false;
     double? edellinenKm = null;
 
@@ -42,7 +43,8 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender || !ladattu) return;
+        if (!ladattu || mapInitialized) return;
+        mapInitialized = true;
 
         var prev = await JS.InvokeAsync<string?>("localStorage.getItem", "kk_last_seen_km");
         if (prev != null && double.TryParse(prev, System.Globalization.NumberStyles.Any,
