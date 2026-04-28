@@ -1,0 +1,192 @@
+@page "/"
+@inject IJSRuntime JS
+@inject HttpClient Http
+
+<PageTitle>Kilometrikisa – Firman yhteinen tavoite</PageTitle>
+
+@code {
+    record Stop(string Name, double Km, double Lat, double Lng);
+
+    static readonly Stop[] Stops = new[]
+    {
+        new Stop("Oulu (lähtö)",    0,    65.012, 25.465),
+        new Stop("Seinäjoki",    1000,   62.794, 22.841),
+        new Stop("Jyväskylä",   1500,   62.243, 25.747),
+        new Stop("Tampere",     2000,   61.498, 23.761),
+        new Stop("Helsinki",    2500,   60.169, 24.935),
+        new Stop("Espoo",       3000,   60.205, 24.656),
+        new Stop("Turku",       3500,   60.451, 22.266),
+        new Stop("MAALI 🏆",   4000,   60.200, 21.400),
+    };
+
+    const double Tavoite = 4000;
+
+    double ajettu = 0;
+    string paivitetty = "";
+    bool ladattu = false;
+    bool virhe = false;
+    double? edellinenKm = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var data = await Http.GetFromJsonAsync<KilometriData>("data.json");
+            if (data != null)
+            {
+                ajettu = data.KilometritYhteensa;
+                paivitetty = data.Paivitetty ?? "";
+            }
+        }
+        catch
+        {
+            virhe = true;
+        }
+        ladattu = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !ladattu) return;
+
+        var prev = await JS.InvokeAsync<string?>("localStorage.getItem", "kk_last_seen_km");
+        if (prev != null && double.TryParse(prev, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var prevKm)
+            && prevKm < ajettu)
+        {
+            edellinenKm = prevKm;
+        }
+        await JS.InvokeVoidAsync("localStorage.setItem", "kk_last_seen_km",
+            ajettu.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        await InitMap();
+        StateHasChanged();
+    }
+
+    async Task InitMap()
+    {
+        var stopsJs = Stops.Select(s => new
+        {
+            name = s.Name,
+            km = s.Km,
+            lat = s.Lat,
+            lng = s.Lng,
+            done = ajettu > s.Km,
+            next = Stops.FirstOrDefault(x => x.Km > ajettu)?.Name == s.Name,
+        }).ToArray();
+
+        await JS.InvokeVoidAsync("kkMap.init", stopsJs, ajettu, edellinenKm.HasValue ? (object)edellinenKm.Value : null);
+    }
+
+    record KilometriData(
+        double KilometritYhteensa,
+        string? Paivitetty,
+        string? Haettu,
+        string? Lahde);
+}
+
+@{
+    double prosentti = ajettu / Tavoite * 100;
+    double jaljella = Tavoite - ajettu;
+    var seuraava = Stops.FirstOrDefault(p => p.Km > ajettu);
+    string pct = prosentti.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+    bool yliTavoitteen = ajettu >= Tavoite;
+    var fi = new System.Globalization.CultureInfo("fi-FI");
+}
+
+<div class="kk-page">
+    <div class="kk-header">
+        <h1 class="kk-title">🚴 Kilometrikisa – Firmatavoite</h1>
+        <p class="kk-subtitle">Yhteinen matka Suomen halki! · Oulu → Turku → MAALI</p>
+    </div>
+
+    @if (!ladattu)
+    {
+        <div class="kk-loading">Ladataan tietoja…</div>
+    }
+    else if (virhe)
+    {
+        <div class="kk-error">⚠️ Tietojen lataus epäonnistui.</div>
+    }
+    else
+    {
+        <div id="kk-map"></div>
+
+        <div class="kk-legend">
+            <span class="kk-legend-item"><span class="kk-leg-line green"></span> Ajettu reitti</span>
+            @if (edellinenKm.HasValue)
+            {
+                <span class="kk-legend-item"><span class="kk-leg-line orange"></span> Uutta edellisestä käynnistä</span>
+            }
+            <span class="kk-legend-item"><span class="kk-leg-line grey"></span> Tuleva reitti</span>
+        </div>
+
+        <div class="kk-stat-row">
+            <div class="kk-stat">
+                <span class="kk-stat-label">Ajettu yhteensä</span>
+                <span class="kk-stat-value kk-green">@ajettu.ToString("N1", fi) km</span>
+            </div>
+            <div class="kk-stat">
+                <span class="kk-stat-label">Tavoite</span>
+                <span class="kk-stat-value">@Tavoite km</span>
+            </div>
+            <div class="kk-stat">
+                <span class="kk-stat-label">@(yliTavoitteen ? "Yli tavoitteen" : "Jäljellä")</span>
+                <span class="kk-stat-value @(yliTavoitteen ? "kk-green" : "kk-orange")">
+                    @(yliTavoitteen ? "+" : "")@Math.Abs(jaljella).ToString("N1", fi) km
+                </span>
+            </div>
+            @if (edellinenKm.HasValue)
+            {
+                <div class="kk-stat">
+                    <span class="kk-stat-label">Uutta edellisestä käynnistä</span>
+                    <span class="kk-stat-value kk-orange">+@((ajettu - edellinenKm.Value).ToString("N1", fi)) km 🔥</span>
+                </div>
+            }
+        </div>
+
+        @if (!yliTavoitteen)
+        {
+            <div class="kk-progress-wrap">
+                <div class="kk-progress-bar" style="width: @(Math.Min(prosentti, 100).ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%">
+                    <span class="kk-progress-label">@pct%</span>
+                </div>
+            </div>
+        }
+
+        @if (seuraava != null && !yliTavoitteen)
+        {
+            double kmSeuraavaan = seuraava.Km - ajettu;
+            <p class="kk-next">
+                Seuraava pysäkki: <strong>@seuraava.Name</strong> (@seuraava.Km km) –
+                enää <strong>@kmSeuraavaan.ToString("N1", fi) km</strong> jäljellä! 💪
+            </p>
+        }
+        else if (yliTavoitteen)
+        {
+            <p class="kk-next kk-win">🏆 Tavoite saavutettu! Mahtavaa pyöräilyä!</p>
+        }
+
+        @if (!string.IsNullOrEmpty(paivitetty))
+        {
+            <p class="kk-updated">Kilometrikisa.fi päivitetty: @paivitetty</p>
+        }
+
+        <div class="kk-stops">
+            @foreach (var p in Stops)
+            {
+                bool ohitettu = ajettu >= p.Km;
+                bool seuraavaPys = seuraava?.Name == p.Name;
+                <div class="kk-stop @(ohitettu ? "done" : "") @(seuraavaPys ? "next" : "")">
+                    <span class="kk-stop-icon">@(ohitettu ? "✅" : seuraavaPys ? "🎯" : "⭕")</span>
+                    <span class="kk-stop-name">@p.Name</span>
+                    <span class="kk-stop-km">@p.Km km</span>
+                    @if (ohitettu)
+                    {
+                        <span class="kk-stop-badge">Ohitettu!</span>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
