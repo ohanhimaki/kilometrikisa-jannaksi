@@ -1,25 +1,15 @@
 @page "/"
 @inject IJSRuntime JS
 @inject HttpClient Http
+@inject IConfiguration Config
 
 <PageTitle>Kilometrikisa – Firman yhteinen tavoite</PageTitle>
 
 @code {
-    record Stop(string Name, double Km, double Lat, double Lng);
+    record StopConfig(string Name, double Km, double Lat, double Lng);
 
-    static readonly Stop[] Stops = new[]
-    {
-        new Stop("Oulu (lähtö)",    0,    65.012, 25.465),
-        new Stop("Seinäjoki",    1000,   62.794, 22.841),
-        new Stop("Jyväskylä",   1500,   62.243, 25.747),
-        new Stop("Tampere",     2000,   61.498, 23.761),
-        new Stop("Helsinki",    2500,   60.169, 24.935),
-        new Stop("Espoo",       3000,   60.205, 24.656),
-        new Stop("Turku",       3500,   60.451, 22.266),
-        new Stop("MAALI 🏆",   4000,   60.200, 21.400),
-    };
-
-    const double Tavoite = 4000;
+    StopConfig[] stops = Array.Empty<StopConfig>();
+    double tavoiteKm = 4000;
 
     double ajettu = 0;
     string paivitetty = "";
@@ -29,6 +19,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Lue config
+        tavoiteKm = Config.GetValue<double>("Kilometrikisa:TavoiteKm", 4000);
+        stops = Config.GetSection("Kilometrikisa:Stops")
+                      .Get<StopConfig[]>() ?? Array.Empty<StopConfig>();
+
         try
         {
             var data = await Http.GetFromJsonAsync<KilometriData>("data.json");
@@ -65,17 +60,19 @@
 
     async Task InitMap()
     {
-        var stopsJs = Stops.Select(s => new
+        var seuraava = stops.FirstOrDefault(x => x.Km > ajettu);
+        var stopsJs = stops.Select(s => new
         {
             name = s.Name,
             km = s.Km,
             lat = s.Lat,
             lng = s.Lng,
             done = ajettu > s.Km,
-            next = Stops.FirstOrDefault(x => x.Km > ajettu)?.Name == s.Name,
+            next = seuraava?.Name == s.Name,
         }).ToArray();
 
-        await JS.InvokeVoidAsync("kkMap.init", stopsJs, ajettu, edellinenKm.HasValue ? (object)edellinenKm.Value : null);
+        await JS.InvokeVoidAsync("kkMap.init", stopsJs, ajettu,
+            edellinenKm.HasValue ? (object)edellinenKm.Value : null);
     }
 
     record KilometriData(
@@ -86,12 +83,13 @@
 }
 
 @{
-    double prosentti = ajettu / Tavoite * 100;
-    double jaljella = Tavoite - ajettu;
-    var seuraava = Stops.FirstOrDefault(p => p.Km > ajettu);
-    string pct = prosentti.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
-    bool yliTavoitteen = ajettu >= Tavoite;
     var fi = new System.Globalization.CultureInfo("fi-FI");
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+    double prosentti = tavoiteKm > 0 ? ajettu / tavoiteKm * 100 : 0;
+    double jaljella = tavoiteKm - ajettu;
+    var seuraava = stops.FirstOrDefault(p => p.Km > ajettu);
+    string pct = Math.Min(prosentti, 100).ToString("F1", inv);
+    bool yliTavoitteen = ajettu >= tavoiteKm;
 }
 
 <div class="kk-page">
@@ -128,7 +126,7 @@
             </div>
             <div class="kk-stat">
                 <span class="kk-stat-label">Tavoite</span>
-                <span class="kk-stat-value">@Tavoite km</span>
+                <span class="kk-stat-value">@tavoiteKm.ToString("N0", fi) km</span>
             </div>
             <div class="kk-stat">
                 <span class="kk-stat-label">@(yliTavoitteen ? "Yli tavoitteen" : "Jäljellä")</span>
@@ -148,7 +146,7 @@
         @if (!yliTavoitteen)
         {
             <div class="kk-progress-wrap">
-                <div class="kk-progress-bar" style="width: @(Math.Min(prosentti, 100).ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%">
+                <div class="kk-progress-bar" style="width: @pct%">
                     <span class="kk-progress-label">@pct%</span>
                 </div>
             </div>
@@ -173,7 +171,7 @@
         }
 
         <div class="kk-stops">
-            @foreach (var p in Stops)
+            @foreach (var p in stops)
             {
                 bool ohitettu = ajettu >= p.Km;
                 bool seuraavaPys = seuraava?.Name == p.Name;

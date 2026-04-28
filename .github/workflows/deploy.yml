@@ -1,0 +1,44 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  # Muuta tämä GitHub-repon nimeksi, esim. /kilometrikisa-jannaksi/
+  GH_PAGES_BASE: /kilometrikisa-jannaksi/
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Hae viimeisin kilometridata
+        run: python3 scripts/scrape.py
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Julkaise Blazor WASM
+        run: |
+          cd KilometrikisaJannaksi
+          dotnet publish -c Release -o ../release
+          # Aseta oikea base href GitHub Pages -polkua varten
+          sed -i "s|<base href=\"/\" />|<base href=\"${{ env.GH_PAGES_BASE }}\" />|" ../release/wwwroot/index.html
+
+      - name: Luo 404.html SPA-reititystä varten
+        run: cp release/wwwroot/index.html release/wwwroot/404.html
+
+      - name: Deploy GitHub Pages -haaraan
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: release/wwwroot

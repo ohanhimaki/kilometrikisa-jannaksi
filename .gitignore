@@ -481,3 +481,9 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 KilometrikisaJannaksi/wwwroot/lib/bootstrap/dist/css/bootstrap-grid.css.map
+
+# Ei tarvita – pelkkä WASM-frontend
+KilometrikisaJannaksi.Api/
+
+# Bootstrap lib – käytetään CDN:ää, ei committata paikallista kopiota
+KilometrikisaJannaksi/wwwroot/lib/

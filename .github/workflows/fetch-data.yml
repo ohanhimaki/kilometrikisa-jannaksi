@@ -2,9 +2,9 @@ name: Päivitä kilometridata
 
 on:
   schedule:
-    # Ajetaan joka yö klo 01:00 UTC (03:00–04:00 Suomen aikaa)
+    # Joka yö klo 01:00 UTC (03:00–04:00 Suomen aikaa)
     - cron: '0 1 * * *'
-  workflow_dispatch: # Mahdollistaa myös manuaalisen ajon
+  workflow_dispatch:
 
 jobs:
   fetch:
@@ -22,5 +22,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add KilometrikisaJannaksi/wwwroot/data.json
-          git diff --staged --quiet || git commit -m "chore: päivitä kilometridata [skip ci]"
-          git push
+          # Commitoi vain jos muuttunut – push triggeröi deploy.yml automaattisesti
+          git diff --staged --quiet || git commit -m "chore: päivitä kilometridata" && git push
