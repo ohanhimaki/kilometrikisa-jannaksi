@@ -117,16 +117,16 @@ code {
 
 /* --- Värimuuttujat --- */
 :root {
-    --kk-green:       #1a7c3e;
-    --kk-green-light: #34c76a;
-    --kk-green-bg:    #e8f5ec;
+    --kk-green:       #e40e56;
+    --kk-green-light: #f5528a;
+    --kk-green-bg:    #fce8ef;
     --kk-orange:      #e07b00;
     --kk-orange-bg:   #fff8ee;
-    --kk-page-bg:     #f0f4f1;
+    --kk-page-bg:     #f7f5f6;
     --kk-card-bg:     #ffffff;
-    --kk-border:      #d0e8da;
-    --kk-text:        #1a2e22;
-    --kk-muted:       #6a7f71;
+    --kk-border:      #f0c0d0;
+    --kk-text:        #1a0a10;
+    --kk-muted:       #7a6069;
 }
 
 html, body, #app {
@@ -152,7 +152,7 @@ main {
 
 .kk-header {
     text-align: center;
-    background: linear-gradient(135deg, var(--kk-green) 0%, #0f5a2c 100%);
+    background: linear-gradient(135deg, var(--kk-green) 0%, #b00840 100%);
     color: white;
     padding: 1.5rem 1rem 1.2rem;
     border-radius: 0 0 20px 20px;
@@ -303,7 +303,7 @@ main {
 
 .kk-stop.done {
     background: var(--kk-green-bg);
-    border-color: #a5d6b0;
+    border-color: #f0a0c0;
 }
 
 .kk-stop.next {
@@ -356,7 +356,7 @@ main {
 
 .kk-win {
     background: var(--kk-green-bg) !important;
-    border-color: #a5d6b0 !important;
+    border-color: #f0a0c0 !important;
     color: var(--kk-green) !important;
     font-size: 1.2rem !important;
     font-weight: 700;
