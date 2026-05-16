@@ -1,9 +1,6 @@
 name: Päivitä kilometridata
 
 on:
-  schedule:
-    # Joka yö klo 01:00 UTC (03:00–04:00 Suomen aikaa)
-    - cron: '0 1 * * *'
   workflow_dispatch:
 
 jobs:
